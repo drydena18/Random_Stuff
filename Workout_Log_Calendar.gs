@@ -1,7 +1,7 @@
 function updateCalendar() {
   const currentYear = new Date().getFullYear();
   const sheetName = `Calendar_${currentYear}`; // Create a year-specific calendar sheet
-  const targetSheets = ["Chest_Tracker", "Back_Tracker", "Arms_Shoulders_Tracker", "Chest_Back_SS_Tracker", "Arms_Core_Tracker"];
+  const targetSheets = ["Chest_Tracker", "Back_Tracker", "Arms_Shoulders_Tracker", "Chest_Back_SS_Tracker", "Arms_Core_Tracker", "Core_Tracker", "Legs_Tracker"];
   const didGoColour = "#00FF00"; // Green
   const blankCellColour = "#000000"; // Black
 
