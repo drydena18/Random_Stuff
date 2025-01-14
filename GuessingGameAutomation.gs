@@ -44,8 +44,8 @@ function updateFrequencyTable() {
       return null;
     }
 
-    // Check for duplicates based on the student's name and guess
-    const key = `${name}-${guess}`;
+    // Check for duplicates based on the student's guess
+    const key = `${guess}`;
     if (studentGuesses[key]) {
       updatedStatus.push(["Duplicate"]);
       return null;
