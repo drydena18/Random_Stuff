@@ -1,30 +1,28 @@
 function updateCalendar() {
   const currentYear = new Date().getFullYear();
-  const sheetName = `Calendar_${currentYear}`; // Create a year-specific calendar sheet
-  const targetSheets = ["Chest_Tracker", "Back_Tracker", "Arms_Shoulders_Tracker", "Chest_Back_SS_Tracker", "Arms_Core_Tracker", "Core_Tracker", "Legs_Tracker"];
+  const calendarSheetName = `Calendar_${currentYear}`;
+  const targetSheets = ["Monday_Tracker", "Tuesday_Tracker", "Wednesday_Tracker", "Thursday_Tracker", "Friday_Tracker"];
   const didGoColour = "#00FF00"; // Green
   const blankCellColour = "#000000"; // Black
 
-  const calendarSheet = getOrCreateSheet(sheetName);
-  
-  // Clear existing content and create a new calendar layout
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet(); // Get active spreadsheet
+  const calendarSheet = getOrCreateSheet(spreadsheet, calendarSheetName);
+
+  // Clear and create the calendar layout
   calendarSheet.clear();
   createCalendarLayout(calendarSheet, currentYear);
 
-  // Extract all valid dates from targetSheets (for the current year only)
+  // Extract valid dates from target sheets
   const dateStatuses = {};
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-
   targetSheets.forEach(sheetName => {
     const sheet = spreadsheet.getSheetByName(sheetName);
-    if (!sheet) return;
+    if (!sheet) {
+      Logger.log(`Sheet "${sheetName}" not found. Skipping.`);
+      return;
+    }
 
-    const dataRange = sheet.getRange(1, 1, sheet.getLastRow(), 1); // Column A
+    const dataRange = sheet.getRange(1, 1, sheet.getLastRow(), 1); // Assume dates are in column A
     const values = dataRange.getValues();
-
-    // Log data from the target sheet
-    console.log(`Checking sheet: ${sheetName}`);
-    console.log(values);
 
     values.forEach(row => {
       const cell = row[0];
@@ -35,35 +33,21 @@ function updateCalendar() {
     });
   });
 
-  // Debugging: Log detected dates
-  console.log("Detected Dates:", Object.keys(dateStatuses));
+  // Apply conditional formatting
+  const updatedRules = [];
 
-  // Get current rules
-  const existingRules = calendarSheet.getConditionalFormatRules();
-  let updatedRules = existingRules.filter(rule => {
-    const condition = rule.getBooleanCondition();
-    if (condition) {
-      const criteria = condition.getCriteriaValues();
-      // Check if it's a text-based condition with date format (e.g. MM/dd/yyyy)
-      if (criteria.length > 0 && typeof criteria[0] === 'string' && criteria[0].match(/\d{2}\/\d{2}\/\d{4}/)) {
-        return false; // Remove this rule if it's based on a date in MM/dd/yyyy format
-      }
-    }
-    return true;
-  });
-
-  // Apply new conditional formatting rules for the detected dates
+  // Add formatting rules for the detected dates
   Object.keys(dateStatuses).forEach(date => {
     updatedRules.push(
       SpreadsheetApp.newConditionalFormatRule()
-        .whenFormulaSatisfied('=TEXT(A1, "MM/dd/yyyy")="' + date + '"') // Use formula to compare dates
+        .whenFormulaSatisfied(`=TEXT(A1, "MM/dd/yyyy")="${date}"`)
         .setBackground(didGoColour)
         .setRanges([calendarSheet.getDataRange()])
         .build()
     );
   });
 
-  // Add a default rule for blank cells
+  // Add a rule for blank cells
   updatedRules.push(
     SpreadsheetApp.newConditionalFormatRule()
       .whenTextEqualTo("")
@@ -72,7 +56,6 @@ function updateCalendar() {
       .build()
   );
 
-  // Apply the updated rules to the calendar sheet
   calendarSheet.setConditionalFormatRules(updatedRules);
 }
 
@@ -85,13 +68,12 @@ function createCalendarLayout(sheet, year) {
     const startDate = new Date(year, month, 1);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // Add a header row for the month name (merged across columns A to G)
-    sheet.getRange(row, 1, 1, 7).merge().setValue(startDate.toLocaleString('default', { month: 'long' }));
+    // Add a header for the month
+    sheet.getRange(row, 1, 1, 7).merge().setValue(startDate.toLocaleString("default", { month: "long" }));
     row++;
 
     let col = 1;
     const firstDayOfWeek = startDate.getDay();
-    // Add blank spaces for days before the start of the month
     for (let i = 0; i < firstDayOfWeek; i++) {
       sheet.getRange(row, col).setValue("");
       col++;
@@ -101,29 +83,21 @@ function createCalendarLayout(sheet, year) {
       const currentDate = new Date(year, month, day);
       const cell = sheet.getRange(row, col);
       cell.setValue(Utilities.formatDate(currentDate, Session.getScriptTimeZone(), "MM/dd/yyyy"));
-      cell.setNumberFormat("MM/dd/yyyy"); // Ensure proper date formatting
+      cell.setNumberFormat("MM/dd/yyyy");
 
       col++;
-      if (col > 7) { // Move to the next row after Saturday
+      if (col > 7) {
         col = 1;
         row++;
       }
     }
-
-    // Move to the next row after finishing the month
     row++;
   }
 }
 
 function isValidDate(value) {
-  // Check if value is a valid date object or a string that can be converted to a date
-  if (Object.prototype.toString.call(value) === '[object Date]') {
-    return !isNaN(value);
-  } else if (typeof value === "string") {
-    const date = new Date(value);
-    return !isNaN(date);
-  }
-  return false;
+  return Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value)
+    || typeof value === "string" && !isNaN(Date.parse(value));
 }
 
 function isSameYear(dateValue, year) {
@@ -131,13 +105,12 @@ function isSameYear(dateValue, year) {
   return date.getFullYear() === year;
 }
 
-function getOrCreateSheet(name) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = spreadsheet.getSheetByName(name);
+function getOrCreateSheet(spreadsheet, sheetName) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(name);
+    sheet = spreadsheet.insertSheet(sheetName);
   } else {
-    sheet.clear(); // Clear the existing sheet if it's already there
+    sheet.clear();
   }
   return sheet;
 }
